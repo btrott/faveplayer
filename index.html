@@ -5,7 +5,7 @@
     
     <style type="text/css">
     body {
-        background: #002884;
+        background: #EE0000;
         color: white;
         height: 100%;
     }
@@ -82,6 +82,7 @@
     } );
     
     var entries = new Array();
+    var currentEntry = 0; // 1-based index into the entries array
     var seenFirst = false;
 
     $( document ).ready( function() {
@@ -89,14 +90,15 @@
             seeentry();
             return false;
         } );
+        
+        loadmore();
+    } );
 
-        var skip = document.location.hash || '#1';
-        skip = skip.substring( 1 );
-    
+    function loadmore() {    
         $.getJSON(
             'http://api.typepad.com/users/' + escape( profileAlias ) + '/favorites.js?callback=?',
             {
-                'start-index': skip,
+                'start-index': currentEntry + 1,
                 'max-results': 15
             },
             function( data ) {
@@ -104,23 +106,26 @@
                     $.getJSON(
                         'http://api.typepad.com/assets/' + data.entries[ i ].inReplyTo.urlId + '.js?callback=?',
                         function( entry ) {
-                            entries[ entries.length ] = entry;
+                            entries.push( entry );
                             if ( !seenFirst ) seeentry();
                         }
                     );
                 }
             }
         );
-    } );
-
+    }
+    
     function seeentry() {
-        $( '#fave-content' ).empty();
-        
         seenFirst = true;
 
-        var asset = entries.shift();
-        if ( !asset )
+        var asset = entries[ currentEntry ];
+        if ( !asset ) {
+            seenFirst = false;
+            loadmore();
             return;
+        }
+
+        $( '#fave-content' ).empty();
 
         var image = null;
         if ( asset.imageLink ) {
@@ -131,8 +136,13 @@
             image = asset.embeddedImageLinks[0];
         }
 
-        $( '#title' ).text( asset.title ).attr( 'href', asset.permalinkUrl );
-        document.title = asset.title;
+        $( '#title' ).attr( 'href', asset.permalinkUrl );
+        if ( asset.title ) {
+            $( '#title' ).text( asset.title );
+            document.title = asset.title;
+        } else {
+            $( '#title' ).empty();
+        }
         
         $( '#permalink' ).attr( 'href', asset.permalinkUrl );
 
@@ -145,6 +155,7 @@
         }
 
         $( '#faves' ).centerize();
+        currentEntry++;
     }
     </script>
 
