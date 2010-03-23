@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html><head>
+    <meta charset="utf-8">
+    <title>TypePad Favorites Widget powered by TypePad</title>
+    
+    <style type="text/css">
+    body {
+        background: #002884;
+        color: white;
+        height: 100%;
+    }
+    #star {
+        position: absolute;
+        right: 0;
+        bottom: 20px;
+        opacity: 0.3;
+    }
+    #faves {
+        position: absolute;
+        width: 500px;
+    }
+    h1 {
+        font-family: Helvetica;
+        font-size: 4em;
+        font-weight: bold;
+        letter-spacing: -0.1em;
+        line-height: 0.95em;
+        text-transform: lowercase;
+        margin: 0;
+    }
+    #fave-content p {
+        font-family: Helvetica;
+        font-size: 1.2em;
+    }
+    #permalink {
+        float: right;
+    }
+    a:link, a:hover, a:visited, a:active {
+        color: white;
+        text-decoration: none;
+    }
+    a:hover {
+        text-decoration: underline;
+    }
+    </style>
+</head><body>
+    
+    <div id="star"> 
+        <img src="star.png" width="240" height="190"> 
+    </div>
+
+    <div id="faves">
+        <h1><a href="#" target="_new" id="title"></a></h1>
+        <div id="fave-content"></div>
+        <p>
+            <a href="#" id="permalink">#</a>
+            <a href="#" id="see-next">&rarr;</a>
+        </p>
+    </div>
+
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+    <script type="text/javascript">
+    var profileAlias = 'btrott';
+    
+    $.fn.centerize = function () {
+        var ph = $( document ).height();
+        var pw = $( document ).width();
+        return this.each( function ( i ) {
+            var ah = $( this ).height();
+            var aw = $( this ).width();
+            var mh = ( ph - ah ) / 2;
+            var mw = ( pw - aw ) / 2;
+            $( this ).css( {
+                top: mh,
+                left: mw
+            } );
+        } );
+    };
+ 
+    $( window ).resize( function () {
+        $( '#faves' ).centerize();
+    } );
+    
+    var entries = new Array();
+    var seenFirst = false;
+
+    $( document ).ready( function() {
+        $( '#see-next' ).click( function() {
+            seeentry();
+            return false;
+        } );
+
+        var skip = document.location.hash || '#1';
+        skip = skip.substring( 1 );
+    
+        $.getJSON(
+            'http://api.typepad.com/users/' + escape( profileAlias ) + '/favorites.js?callback=?',
+            {
+                'start-index': skip,
+                'max-results': 15
+            },
+            function( data ) {
+                for ( var i = 0; i < data.entries.length; i++ ) {
+                    $.getJSON(
+                        'http://api.typepad.com/assets/' + data.entries[ i ].inReplyTo.urlId + '.js?callback=?',
+                        function( entry ) {
+                            entries[ entries.length ] = entry;
+                            if ( !seenFirst ) seeentry();
+                        }
+                    );
+                }
+            }
+        );
+    } );
+
+    function seeentry() {
+        $( '#fave-content' ).empty();
+        
+        seenFirst = true;
+
+        var asset = entries.shift();
+        if ( !asset )
+            return;
+
+        var image = null;
+        if ( asset.imageLink ) {
+            image = asset.imageLink;
+        } else if ( asset.previewImageLink ) {
+            image = asset.previewImageLink;
+        } else if ( asset.embeddedImageLinks && asset.embeddedImageLinks.length > 0 ) {
+            image = asset.embeddedImageLinks[0];
+        }
+
+        $( '#title' ).text( asset.title ).attr( 'href', asset.permalinkUrl );
+        document.title = asset.title;
+        
+        $( '#permalink' ).attr( 'href', asset.permalinkUrl );
+
+        if ( image && image.urlTemplate ) {
+            $( '#fave-content' ).append( '<p><img src="' + image.urlTemplate.replace( '{spec}', '350wi' ) + '" /></p>' );
+        }
+        
+        if ( asset.excerpt ) {
+            $( '#fave-content' ).append( '<p>' + asset.excerpt + '</p>' );
+        }
+
+        $( '#faves' ).centerize();
+    }
+    </script>
+
+</body></html>
